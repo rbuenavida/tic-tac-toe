@@ -1,56 +1,71 @@
 (function IIFE (Game) {
-  var squares = document.querySelectorAll('.square')
-  var turn1 = document.querySelector('.player1')
-  var turn2 = document.querySelector('.player2')
-  var player1 = document.querySelector('.player1 .score')
-  var player2 = document.querySelector('.player2 .score')
+  var ui = {
+    squares: document.querySelectorAll('.square'),
+    turn1: document.querySelector('.player1'),
+    turn2: document.querySelector('.player2'),
+    player1: document.querySelector('.player1 .score'),
+    player2: document.querySelector('.player2 .score')
+  }
 
-  function updateBoard (index, symbol) {
-    squares[index].querySelector('div').classList.add(symbol)
+  function updateBoard (index, className) {
+    if (className) {
+      ui.squares[index].querySelector('div').classList.add(className)
+    } else {
+      ui.squares[index].querySelector('div').className = ''
+    }
   }
 
   function highlightPlayer (playerNumber) {
-    if (playerNumber === 1) {
-      turn1.classList.remove('turn')
-      turn2.classList.add('turn')
+    if ((parseInt(playerNumber) + 1) === 1) {
+      ui.turn1.classList.remove('turn')
+      ui.turn2.classList.add('turn')
     } else {
-      turn2.classList.remove('turn')
-      turn1.classList.add('turn')
+      ui.turn2.classList.remove('turn')
+      ui.turn1.classList.add('turn')
     }
   }
 
   function updatePlayerScores (scores) {
-    player1.innerHTML = scores[0]
-    player2.innerHTML = scores[1]
+    ui.player1.innerHTML = scores[0]
+    ui.player2.innerHTML = scores[1]
   }
 
   function blink (indexes) {
     for (var i = 3; i--;) {
-      squares[indexes[i]].querySelector('div').classList.add('blink')
+      updateBoard(indexes[i], 'blink')
     }
+  }
+
+  function reset () {
+    Game.reset()
+    let state = Game.getState()
+    for (var i = state.board.length; i--;) {
+      updateBoard(i)
+    }
+    highlightPlayer(state.player)
   }
 
   function squareClicked (index) {
     if (Game.isGameOver()) {
+      reset()
       return
     }
 
-    Game.setSquare(index)
+    Game.markSquare(index)
 
     let state = Game.getState()
     let isWin = (state.winningCombo.length > 0)
 
     updateBoard(index, state.board[index])
-    highlightPlayer(parseInt(state.player) + 1)
+    highlightPlayer(state.player)
 
     if (isWin) {
       updatePlayerScores(state.playerScores)
       blink(state.winningCombo)
-      // Game.reset()
     }
   }
 
-  squares.forEach(function (el, index) {  
+  ui.squares.forEach(function (el, index) {
     el.addEventListener('click', function (e) { e.preventDefault(); squareClicked(index) })
   })
 })(
@@ -82,10 +97,9 @@
     function reset () {
       state.board = Array(9)
       state.gameOver = false
-      state.player = 0
     }
 
-    function setSquare (index) {
+    function markSquare (index) {
       let symbol = state.players[state.player]
 
       if (state.board[index]) return
@@ -123,11 +137,12 @@
     }
 
     function getState () {
-      return Object.assign({}, state)
+      let currentState = Object.assign({}, state)
+      return currentState
     }
 
     return {
-      setSquare: setSquare,
+      markSquare: markSquare,
       getState: getState,
       reset: reset,
       isGameOver: function () { return state.gameOver }
