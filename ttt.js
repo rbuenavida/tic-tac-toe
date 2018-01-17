@@ -1,5 +1,5 @@
 (function IIFE (Game) {
-  var ui = {
+  const ui = {
     squares: document.querySelectorAll('.square'),
     turn1: document.querySelector('.player1'),
     turn2: document.querySelector('.player2'),
@@ -70,7 +70,8 @@
   })
 })(
   (function () {
-    var winningCombos = [
+    'use strict'
+    const winningCombos = [
       // horizontal
       [0, 1, 2],
       [3, 4, 5],
@@ -84,7 +85,7 @@
       [2, 4, 6]
     ]
 
-    var state = {
+    let state = {
       board: Array(9),
       player: 0,
       players: ['x', 'o'],
@@ -93,7 +94,6 @@
       winningCombo: []
     }
 
-    // side effects
     function reset () {
       state.board = Array(9)
       state.gameOver = false
@@ -118,7 +118,7 @@
     }
 
     function isBoardFull () {
-      for (var i = 0; i < state.board.length; i++) {
+      for (let i = 0; i < state.board.length; i++) {
         if (!state.board[i]) return false
       }
       return true
@@ -126,9 +126,7 @@
 
     function getPlayerWinningCombo (symbol) {
       for (let ps = 0; ps < winningCombos.length; ps++) {
-        let first = state.board[winningCombos[ps][0]]
-        let second = state.board[winningCombos[ps][1]]
-        let third = state.board[winningCombos[ps][2]]
+        let [first, second, third] = winningCombos[ps].map(index => state.board[index])
         if (first === symbol && second === symbol && third === symbol) {
           return winningCombos[ps]
         }
@@ -137,7 +135,7 @@
     }
 
     function getState () {
-      let currentState = Object.assign({}, state)
+      let currentState = {...state}
       return currentState
     }
 
@@ -145,7 +143,7 @@
       markSquare: markSquare,
       getState: getState,
       reset: reset,
-      isGameOver: function () { return state.gameOver }
+      isGameOver: () => state.gameOver
     }
   })()
 )
