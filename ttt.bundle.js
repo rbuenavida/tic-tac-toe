@@ -2,8 +2,6 @@
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 (function IIFE(Game) {
   var ui = {
     squares: document.querySelectorAll('.square'),
@@ -12,6 +10,8 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
     player1: document.querySelector('.player1 .score'),
     player2: document.querySelector('.player2 .score')
   };
+
+  var playerClassNames = ['x', 'o'];
 
   function updateBoard(index, className) {
     if (className) {
@@ -31,9 +31,9 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
     }
   }
 
-  function updatePlayerScores(scores) {
-    ui.player1.innerHTML = scores[0];
-    ui.player2.innerHTML = scores[1];
+  function updatePlayerScores(players) {
+    ui.player1.innerHTML = players[0].score;
+    ui.player2.innerHTML = players[1].score;
   }
 
   function blink(indexes) {
@@ -42,40 +42,61 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
     }
   }
 
-  function reset() {
-    Game.reset();
-    var state = Game.getState();
-    for (var i = state.board.length; i--;) {
-      updateBoard(i);
-    }
-    highlightPlayer(state.player);
-  }
-
-  function squareClicked(index) {
-    if (Game.isGameOver()) {
-      reset();
-      return;
-    }
-
-    Game.markSquare(index);
-
-    var state = Game.getState();
+  function updateUI(state) {
     var isWin = state.winningCombo.length > 0;
 
-    updateBoard(index, state.board[index]);
-    highlightPlayer(state.player);
+    var classes = state.board.map(function (val, index) {
+      return [index, val >= 0 ? playerClassNames[val] : null];
+    });
+
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = classes[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var v = _step.value;
+
+        updateBoard(v[0], v[1]);
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator.return) {
+          _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+
+    highlightPlayer(state.activePlayer);
 
     if (isWin) {
-      updatePlayerScores(state.playerScores);
+      updatePlayerScores(state.players);
       blink(state.winningCombo);
     }
   }
 
-  ui.squares.forEach(function (el, index) {
-    el.addEventListener('click', function (e) {
-      e.preventDefault();squareClicked(index);
+  function squareClicked(index) {
+    var gameState = Game.markSquare(index);
+    updateUI(gameState);
+  }
+
+  function init() {
+    ui.squares.forEach(function (el, index) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();squareClicked(index);
+      });
     });
-  });
+    updateUI(Game.getState());
+  }
+
+  init();
 })(function () {
   'use strict';
 
@@ -88,72 +109,76 @@ var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = [
   [0, 4, 8], [2, 4, 6]];
 
   var state = {
-    board: Array(9),
-    player: 0,
-    players: ['x', 'o'],
-    playerScores: [0, 0],
-    gameOver: false,
+    board: Array(9).fill(null), // could remove but easier like this
+    players: [{ score: 0 }, { score: 0 }],
+    activePlayer: 0,
     winningCombo: []
   };
 
   function reset() {
-    state.board = Array(9);
-    state.gameOver = false;
-  }
-
-  function markSquare(index) {
-    var symbol = state.players[state.player];
-
-    if (state.board[index]) return;
-
-    state.board[index] = symbol;
-    state.winningCombo = getPlayerWinningCombo(symbol);
-
-    var isWin = state.winningCombo.length > 0;
-
-    state.gameOver = isWin || isBoardFull();
-    state.playerScores[state.player] += isWin ? 1 : 0;
-
-    if (state.gameOver) return;
-
-    state.player = +!state.player;
+    state.board = Array(9).fill(null);
+    // keep winner's turn
+    state.activePlayer = state.winningCombo.length > 0 ? state.activePlayer : 0;
+    state.winningCombo = [];
   }
 
   function isBoardFull() {
-    for (var i = 0; i < state.board.length; i++) {
-      if (!state.board[i]) return false;
-    }
-    return true;
+    var amount = state.board.reduce(function (sum, value) {
+      return sum + (value !== null ? 1 : 0);
+    }, 0);
+    return amount === 9;
   }
 
-  function getPlayerWinningCombo(symbol) {
-    for (var ps = 0; ps < winningCombos.length; ps++) {
-      var _winningCombos$ps$map = winningCombos[ps].map(function (index) {
-        return state.board[index];
-      }),
-          _winningCombos$ps$map2 = _slicedToArray(_winningCombos$ps$map, 3),
-          first = _winningCombos$ps$map2[0],
-          second = _winningCombos$ps$map2[1],
-          third = _winningCombos$ps$map2[2];
+  function isGameOver() {
+    return isBoardFull() || state.winningCombo.length > 0;
+  }
 
-      if (first === symbol && second === symbol && third === symbol) {
-        return winningCombos[ps];
+  function mark(index) {
+    if (isGameOver()) {
+      reset();
+      return getState();
+    }
+
+    if (state.board[index] === null) {
+      state.board[index] = state.activePlayer;
+
+      var winningCombo = findWinningCombo(state.activePlayer);
+
+      if (winningCombo.length > 0) {
+        state.players[state.activePlayer].score += 1;
+        state.winningCombo = winningCombo[0];
+      } else {
+        state.activePlayer = +!state.activePlayer;
       }
     }
-    return [];
+
+    return getState();
+  }
+
+  function getIndexesMarked(playerNumber) {
+    return state.board.reduce(function (ar, element, index) {
+      if (element === playerNumber) {
+        ar.push(index);
+      }
+      return ar;
+    }, []);
+  }
+
+  function findWinningCombo(playerNumber) {
+    var indexesSelected = getIndexesMarked(playerNumber);
+
+    return winningCombos.filter(function (combo) {
+      return indexesSelected.indexOf(combo[0]) >= 0 && indexesSelected.indexOf(combo[1]) >= 0 && indexesSelected.indexOf(combo[2]) >= 0;
+    });
   }
 
   function getState() {
-    var currentState = _extends({}, state);
-    return currentState;
+    return _extends({}, state); // copy of state
   }
 
   return {
-    markSquare: markSquare,
+    markSquare: mark,
     getState: getState,
-    reset: reset,
-    isGameOver: function isGameOver() {
-      return state.gameOver;
-    }
+    isGameOver: isGameOver
   };
 }());
